@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Capstone",
+            "type": "ocamldebug",
+            "request": "launch",
+            "program": "${workspaceRoot}/PA3BSummer2023.d.byte",
+            "stopOnEntry": false,
+            "preLaunchTask": "build" // Build before launch        
+        }
+    ]
+}
