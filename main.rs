@@ -1,6 +1,7 @@
 use notan::draw::*;
 use notan::prelude::*;
 use std::cmp;
+use std::process::exit;
 
 //defines each entity type that will be used
 #[derive(Clone, Copy)]
@@ -33,6 +34,7 @@ enum GameState {
 struct State {
     p1: Entity,
     entities: Vec<Entity>,
+    timer: f32,
 }
 
 //general functions used by the game state
@@ -245,121 +247,134 @@ fn setup() -> State {
             is_tangible: true,
         },
         entities: Vec::new(),
+        timer: 0.0,
     }
 }
 
 //controls what happens as the game updates
 fn update(app: &mut App, state: &mut State) {
-    if app.keyboard.was_pressed(KeyCode::Q) {
-        app.exit();
-    }
-    if app.keyboard.is_down(KeyCode::W) {
-        if state.p1.speed_y > (-1.0 * state.p1.top_speed) {
-            state.p1.speed_y += -5.0;
+    state.timer = app.timer.delta_f32();
+    if state.timer >= (1.0 / 240.0) {
+        state.timer = 0.0;
+        if app.keyboard.was_pressed(KeyCode::Q) {
+            app.exit();
         }
-    }
-    if app.keyboard.is_down(KeyCode::S) {
-        if state.p1.speed_y < (1.0 * state.p1.top_speed) {
-            state.p1.speed_y += 5.0;
-        }
-    }
-    if app.keyboard.is_down(KeyCode::A) {
-        if state.p1.speed_x > (-1.0 * state.p1.top_speed) {
-            state.p1.speed_x += -5.0;
-        }
-    }
-    if app.keyboard.is_down(KeyCode::D) {
-        if state.p1.speed_x < (1.0 * state.p1.top_speed) {
-            state.p1.speed_x += 5.0;
-        }
-    }
-
-    //fire player weapon
-    if app.keyboard.is_down(KeyCode::Space) {
-        println!("firing weapon!");
-        state.bullet(state.p1, 1);
-    }
-
-    //move entity along y coordinate, then decay speed
-    if state.p1.shape.center_y < 600.0 && state.p1.shape.center_y > 0.0 {
-        state.p1.move_y(state.p1.speed_y);
-    }
-    if state.p1.speed_y > 0.0 {
-        state.p1.speed_y -= state.p1.speed_y * 0.25;
-    } else if state.p1.speed_y < 0.0 {
-        state.p1.speed_y += state.p1.speed_y * 0.25;
-    }
-
-    //move entity along x coordinate, then decay speed
-    if state.p1.shape.center_x < 1000.0 && state.p1.shape.center_x > 0.0 {
-        state.p1.move_x(state.p1.speed_x);
-    }
-    if state.p1.speed_x > 0.0 {
-        state.p1.speed_x -= state.p1.speed_x * 0.25;
-    } else if state.p1.speed_x < 0.0 {
-        state.p1.speed_x += state.p1.speed_x * 0.25;
-    }
-
-    //move non player entities
-    for i in 0..(state.entities.len()) {
-        let e = state.entities[i];
-
-        //do the move
-        state.entities[i].move_x(e.speed_x);
-        state.entities[i].move_y(e.speed_y);
-
-        //destroy any entities that are out of bounds
-        if e.shape.center_x > 1200.0 || e.shape.center_x < -200.0 {
-            state.despawn(e.id);
-        } else if e.shape.center_y > 800.0 || e.shape.center_y < -200.0 {
-            state.despawn(e.id);
-        }
-    }
-
-    //check collison
-    //the most efficient way that I could find at eh moment is iterating through the list in a nested loop
-    //since each pair needs to only be checked once, some comparisons can be skipped
-    //it does slow down at ~1k entities
-    //ex: if a touches b, then by definition b must also touch a
-    let l = state.entities.len();
-    //for each entity
-    for i in 0..l {
-        let m = l - i;
-        //for each entity after entity i
-        for j in 0..m {
-            if false
-            //touches(state.entities[i], state.entities[m])
-            {
-                //touch(state.entities[i], state.entities[m]);
+        if app.keyboard.is_down(KeyCode::W) {
+            if state.p1.speed_y > (-1.0 * state.p1.top_speed) {
+                state.p1.speed_y += -5.0;
             }
         }
-    }
+        if app.keyboard.is_down(KeyCode::S) {
+            if state.p1.speed_y < (1.0 * state.p1.top_speed) {
+                state.p1.speed_y += 5.0;
+            }
+        }
+        if app.keyboard.is_down(KeyCode::A) {
+            if state.p1.speed_x > (-1.0 * state.p1.top_speed) {
+                state.p1.speed_x += -5.0;
+            }
+        }
+        if app.keyboard.is_down(KeyCode::D) {
+            if state.p1.speed_x < (1.0 * state.p1.top_speed) {
+                state.p1.speed_x += 5.0;
+            }
+        }
 
-    //if the player is out of bounds, push them back in bounds and stop them
-    //y
-    //positive
-    if state.p1.shape.center_y > 600.0 {
-        state.p1.speed_y = 0.0;
-        state.p1.move_y(-state.p1.top_speed);
-    }
+        //fire player weapon
+        if app.keyboard.is_down(KeyCode::Space) {
+            println!("firing weapon!");
+            state.bullet(state.p1, 1);
+        }
 
-    //negative
-    if state.p1.shape.center_y < 0.0 {
-        state.p1.speed_y = 0.0;
-        state.p1.move_y(state.p1.top_speed);
-    }
+        //move entity along y coordinate, then decay speed
+        if state.p1.shape.center_y < 600.0 && state.p1.shape.center_y > 0.0 {
+            state.p1.move_y(state.p1.speed_y);
+        }
+        if state.p1.speed_y > 0.0 {
+            state.p1.speed_y -= state.p1.speed_y * 0.25;
+        } else if state.p1.speed_y < 0.0 {
+            state.p1.speed_y -= state.p1.speed_y * 0.25;
+        }
 
-    //x
-    //positive
-    if state.p1.shape.center_x > 1000.0 {
-        state.p1.speed_x = 0.0;
-        state.p1.move_x(-state.p1.top_speed);
-    }
+        //move entity along x coordinate, then decay speed
+        if state.p1.shape.center_x < 1000.0 && state.p1.shape.center_x > 0.0 {
+            state.p1.move_x(state.p1.speed_x);
+        }
+        if state.p1.speed_x > 0.0 {
+            state.p1.speed_x -= state.p1.speed_x * 0.25;
+        } else if state.p1.speed_x < 0.0 {
+            state.p1.speed_x -= state.p1.speed_x * 0.25;
+        }
 
-    //negative
-    if state.p1.shape.center_x < 0.0 {
-        state.p1.speed_x = 0.0;
-        state.p1.move_x(state.p1.top_speed);
+        //move non player entities
+        let mut i: usize = 0x00;
+        while i < state.entities.len() {
+            let e = state.entities[i];
+
+            //do the move
+            state.entities[i].move_x(e.speed_x);
+            state.entities[i].move_y(e.speed_y);
+
+            //destroy any entities that are out of bounds
+            if e.shape.center_x > 1200.0 || e.shape.center_x < -200.0 {
+                state.entities.remove(i);
+                if i != 0 {
+                    i -= 1 as usize;
+                }
+            } else if e.shape.center_y > 800.0 || e.shape.center_y < -200.0 {
+                state.entities.remove(i);
+                if i != 0 {
+                    i -= 1 as usize;
+                }
+            }
+            i += 1 as usize;
+        }
+
+        //check collison
+        //the most efficient way that I could find at eh moment is iterating through the list in a nested loop
+        //since each pair needs to only be checked once, some comparisons can be skipped
+        //it does slow down at ~1k entities
+        //ex: if a touches b, then by definition b must also touch a
+        let l = state.entities.len();
+        //for each entity
+        for i in 0..l {
+            let m = l - i;
+            //for each entity after entity i
+            for j in 0..m {
+                if false
+                //touches(state.entities[i], state.entities[m])
+                {
+                    //touch(state.entities[i], state.entities[m]);
+                }
+            }
+        }
+
+        //if the player is out of bounds, push them back in bounds and stop them
+        //y
+        //positive
+        if state.p1.shape.center_y > 600.0 {
+            state.p1.speed_y = 0.0;
+            state.p1.move_y(-state.p1.top_speed);
+        }
+
+        //negative
+        if state.p1.shape.center_y < 0.0 {
+            state.p1.speed_y = 0.0;
+            state.p1.move_y(state.p1.top_speed);
+        }
+
+        //x
+        //positive
+        if state.p1.shape.center_x > 1000.0 {
+            state.p1.speed_x = 0.0;
+            state.p1.move_x(-state.p1.top_speed);
+        }
+
+        //negative
+        if state.p1.shape.center_x < 0.0 {
+            state.p1.speed_x = 0.0;
+            state.p1.move_x(state.p1.top_speed);
+        }
     }
 }
 
